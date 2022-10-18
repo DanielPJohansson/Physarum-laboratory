@@ -19,6 +19,7 @@ public class Simulation : MonoBehaviour
     Renderer rend;
     RenderTexture trailTexture;
     RenderTexture diffusionTexture;
+    RenderTexture drawTexture;
     ComputeBuffer computeBuffer;
     int cellHandle;
     int diffuseHandle;
@@ -44,6 +45,9 @@ public class Simulation : MonoBehaviour
         diffusionTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
         diffusionTexture.enableRandomWrite = true;
         diffusionTexture.Create();
+        drawTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
+        drawTexture.enableRandomWrite = true;
+        drawTexture.Create();
         rend = GetComponent<Renderer>();
         rend.enabled = true;
 
@@ -59,33 +63,18 @@ public class Simulation : MonoBehaviour
 
     private void InitData()
     {
-        uint numberOfCellsInstatiated = (numberOfCells / 32) * 32;
+        uint numberOfCellsInstatiated = (numberOfCells / 64) * 64;
+        Debug.Log(numberOfCellsInstatiated);
         cells = new Cell[numberOfCellsInstatiated];
 
         for (int i = 0; i < numberOfCellsInstatiated; i++)
         {
-            // int colorChoice = Random.Range(0, 2);
             Vector4 cellColor = new Vector4(1, 1, 1, 1);
-
-            // if (colorChoice == 0)
-            // {
-            //     cellColor = new Vector4(1, 0, 0, 1);
-            // }
-            // else if (colorChoice == 1)
-            // {
-            //     cellColor = new Vector4(0, 1, 0, 1);
-            // }
-            // else if (colorChoice == 2)
-            // {
-            //     cellColor = new Vector4(0, 0, 1, 1);
-            // }
 
             Cell cell = new()
             {
                 position = new Vector2(texResolution.x / 2, texResolution.y / 2),
                 angle = Random.Range(0f, 2 * Mathf.PI),
-                // direction = new Vector2(Random.Range(-1f, 1f), Random.Range(-1f, 1f)),
-                // velocity = Random.Range(velocity - velocity * 0.1f, velocity + velocity * 0.1f),
                 velocity = velocity,
             };
             cells[i] = cell;
@@ -96,9 +85,9 @@ public class Simulation : MonoBehaviour
     {
         cellHandle = shader.FindKernel("Cells");
         diffuseHandle = shader.FindKernel("Diffuse");
-        Debug.Log(cellHandle);
         shader.GetKernelThreadGroupSizes(cellHandle, out threadGroupSizeX, out _, out _);
         threads = Mathf.CeilToInt(((float)numberOfCells / (float)threadGroupSizeX));
+        Debug.Log(threads);
 
         Debug.Log(threadGroupSizeX);
 
@@ -114,16 +103,18 @@ public class Simulation : MonoBehaviour
         shader.SetFloat("senseDistance", senseDistance);
 
         shader.SetTexture(cellHandle, "TrailTex", trailTexture);
-        shader.SetTexture(cellHandle, "DiffusedTex", diffusionTexture);
-        shader.SetTexture(diffuseHandle, "TrailTex", trailTexture);
+        // shader.SetTexture(cellHandle, "DrawTex", drawTexture);
+        shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
         shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
 
         int stride = (2 + 1 + 1) * sizeof(float);
         computeBuffer = new ComputeBuffer(cells.Length, stride);
         computeBuffer.SetData(cells);
         shader.SetBuffer(cellHandle, "cellsBuffer", computeBuffer);
+        // Graphics.Blit(trailTexture, drawTexture);
+        // Graphics.Blit(trailTexture, diffusionTexture);
 
-        rend.material.SetTexture("_MainTex", diffusionTexture);
+        rend.material.SetTexture("_MainTex", drawTexture);
     }
 
     private void DispatchKernals()
@@ -133,6 +124,7 @@ public class Simulation : MonoBehaviour
         shader.SetFloat("time", Time.time);
         shader.SetFloat("deltaTime", Time.fixedDeltaTime);
         shader.Dispatch(cellHandle, threads, 1, 1);
+        Graphics.Blit(trailTexture, drawTexture);
     }
 
 
