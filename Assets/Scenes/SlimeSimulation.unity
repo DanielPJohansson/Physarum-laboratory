@@ -319,16 +319,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 7200000, guid: 91a184fb8757d63458fcbec62a931f19, type: 3}
-  texResolution: {x: 2048, y: 2048}
-  cellColor: {r: 1, g: 1, b: 1, a: 0}
+  texResolution: {x: 512, y: 512}
+  cellColor: {r: 0.2710039, g: 0.5471698, b: 0.2873175, a: 1}
   backgroundColor: {r: 0, g: 0, b: 0, a: 0}
-  numberOfCells: 1000000
-  velocity: 100
+  numberOfCells: 100
+  velocity: 50
   turnSpeed: 20
   senseAngle: 0.3
   senseDistance: 10
-  decayRate: 2
-  diffusionRate: 0.1
+  decayRate: {x: 0.1, y: 0.5, z: 0.1, w: 0}
+  diffusionRate: {x: 50, y: 50, z: 50, w: 1}
 --- !u!1 &1788551107
 GameObject:
   m_ObjectHideFlags: 0

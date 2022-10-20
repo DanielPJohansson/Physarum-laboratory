@@ -13,8 +13,8 @@ public class Simulation : MonoBehaviour
     [SerializeField] float turnSpeed = 10f;
     [SerializeField] float senseAngle = 1f;
     [SerializeField] float senseDistance = 10f;
-    [SerializeField] float decayRate = 1f;
-    [SerializeField] float diffusionRate = 1f;
+    [SerializeField] Vector4 decayRate = new Vector4(1f, 0.5f, 0.2f, 0f);
+    [SerializeField] Vector4 diffusionRate = new Vector4(0.2f, 0.5f, 2f, 0f);
 
     Renderer rend;
     RenderTexture trailTexture;
@@ -96,13 +96,14 @@ public class Simulation : MonoBehaviour
         shader.SetInt("texResolutionX", texResolution.x);
         shader.SetInt("texResolutionY", texResolution.y);
         shader.SetFloat("deltaTime", Time.fixedDeltaTime);
-        shader.SetFloat("decayRate", decayRate);
-        shader.SetFloat("diffusionRate", diffusionRate);
+        shader.SetVector("decayRate", decayRate);
+        shader.SetVector("diffusionRate", diffusionRate);
         shader.SetFloat("senseAngle", senseAngle);
         shader.SetFloat("turnSpeed", turnSpeed);
         shader.SetFloat("senseDistance", senseDistance);
 
         shader.SetTexture(cellHandle, "TrailTex", trailTexture);
+        // shader.SetTexture(diffuseHandle, "TrailTex", trailTexture);
         // shader.SetTexture(cellHandle, "DrawTex", drawTexture);
         shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
         shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
@@ -119,10 +120,10 @@ public class Simulation : MonoBehaviour
 
     private void DispatchKernals()
     {
-        Graphics.Blit(diffusionTexture, trailTexture);
 
         shader.SetFloat("time", Time.time);
         shader.SetFloat("deltaTime", Time.fixedDeltaTime);
+
         shader.Dispatch(cellHandle, threads, 1, 1);
         Graphics.Blit(trailTexture, drawTexture);
     }
@@ -131,5 +132,6 @@ public class Simulation : MonoBehaviour
     void LateUpdate()
     {
         shader.Dispatch(diffuseHandle, texResolution.x / 8, texResolution.y / 8, 1);
+        Graphics.Blit(diffusionTexture, trailTexture);
     }
 }
