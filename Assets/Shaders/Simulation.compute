@@ -146,6 +146,6 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
     // float4 diffusedPoint = float4(max(sumOfTrail.r/9*diffusionRate.r*deltaTime, DrawTex[id.xy].r), max(sumOfTrail.g/9*diffusionRate.g*deltaTime, DrawTex[id.xy].g), max(sumOfTrail.b/9*diffusionRate.b*deltaTime, DrawTex[id.xy].b), 1);
     // float4 newValue = float4(max(diffusedPoint.r, DrawTex[id.xy].r), max(diffusedPoint.g, DrawTex[id.xy].g), max(diffusedPoint.b, DrawTex[id.xy].b), 1);
     float4 diffusedPoint = float4(0,0,0,0);
-    diffusedPoint += DrawTex[id.xy] + diffusedPoint*diffusionRate*deltaTime;
+    diffusedPoint += DrawTex[id.xy] + sumOfTrail/9*diffusionRate*deltaTime;
     DiffusedTex[id.xy] = diffusedPoint - decayRate*deltaTime;
 }
