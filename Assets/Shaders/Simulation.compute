@@ -60,12 +60,17 @@ float senseArea(float2 pos, float angle, float senseAngle) {
     float2 edgeSenseDir = float2(cos(angle + senseAngle), sin(angle + senseAngle));
     
     float sensed = 0;
+    float2 centerPos = float2(pos.x + edgeSenseDir.x*senseDistance, pos.y + edgeSenseDir.y*senseDistance);
 
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++){
-            int sensePosX = (pos.x + edgeSenseDir.x*senseDistance)*i;
-            int sensePosY = (pos.y + edgeSenseDir.y*senseDistance)*j;
-            sensed += TrailTex[uint2(sensePosX,sensePosY)].r*0.1 + TrailTex[uint2(sensePosX,sensePosY)].g*0.5 + TrailTex[uint2(sensePosX,sensePosY)].b*1;
+            // Yields interesting grid pattern
+            // int sensePosX = (pos.x + edgeSenseDir.x*senseDistance)*i; 
+            // int sensePosY = (pos.y + edgeSenseDir.y*senseDistance)*j;
+            int sensePosX = centerPos.x + i;
+            int sensePosY = centerPos.y + j;
+            sensed += TrailTex[uint2(sensePosX,sensePosY)].r*1 + TrailTex[uint2(sensePosX,sensePosY)].g*0.5 + TrailTex[uint2(sensePosX,sensePosY)].b*0.1;
+            // sensed += TrailTex[uint2(sensePosX,sensePosY)];
         }
     }
     
@@ -84,25 +89,25 @@ void Cells (uint3 id : SV_DispatchThreadID)
     {
         pos.x = 1;
         // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 3.14;
+        newAngle -= 2.81;
     }
     if(pos.y < 1.0 )
     {
         pos.y = 1;
         // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 3.14;
+        newAngle -= 2.81;
     }
     if(pos.x > texResolutionX - 1.0)
     {
         pos.x = texResolutionX - 1.0;
         // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 3.14;
+        newAngle -= 2.81;
     }
     if(pos.y > texResolutionY - 1.0)
     {
         pos.y = texResolutionY - 1.0;
         // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 3.14;
+        newAngle -= 2.81;
     }
 
     float senseRight = senseArea(pos, newAngle, -senseAngle);
@@ -112,6 +117,14 @@ void Cells (uint3 id : SV_DispatchThreadID)
     if(senseForward > senseRight && senseForward > senseLeft)
     {
         newAngle += 0.0;
+        // if(senseForward < 0.5)
+        // {
+        //     newAngle += (random(pos, time)-0.5)*4*deltaTime*turnSpeed;
+        // }   
+    }
+    else if(senseForward < senseRight && senseForward < senseLeft)
+    {
+        // newAngle += (random(pos, time)-0.5)*2*deltaTime*turnSpeed;
     }
     else if(senseRight > senseForward && senseRight > senseLeft)
     {
@@ -133,9 +146,9 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
 {
     float4 sumOfTrail = 0;
 
-    for(int i = -1; i <=1; i++)
+    for(int i = -1; i <= 1; i++)
     {
-        for(int j = -1; j<=1; j++)
+        for(int j = -1; j <= 1; j++)
         {   
             // if((int)id.x + i > 1 && (int)id.x + i < texResolutionX - 1 && (int)id.y + j > 1 && (int)id.y + j < texResolutionY - 1)
             sumOfTrail += DrawTex[uint2(id.x+i, id.y+j)];
@@ -143,9 +156,11 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
         }
     }
 
-    // float4 diffusedPoint = float4(max(sumOfTrail.r/9*diffusionRate.r*deltaTime, DrawTex[id.xy].r), max(sumOfTrail.g/9*diffusionRate.g*deltaTime, DrawTex[id.xy].g), max(sumOfTrail.b/9*diffusionRate.b*deltaTime, DrawTex[id.xy].b), 1);
     // float4 newValue = float4(max(diffusedPoint.r, DrawTex[id.xy].r), max(diffusedPoint.g, DrawTex[id.xy].g), max(diffusedPoint.b, DrawTex[id.xy].b), 1);
     float4 diffusedPoint = float4(0,0,0,0);
-    diffusedPoint += DrawTex[id.xy] + sumOfTrail/9*diffusionRate*deltaTime;
+    diffusedPoint += float4(max(sumOfTrail.r/9*diffusionRate.r*deltaTime, DrawTex[id.xy].r), max(sumOfTrail.g/9*diffusionRate.g*deltaTime, DrawTex[id.xy].g), max(sumOfTrail.b/9*diffusionRate.b*deltaTime, DrawTex[id.xy].b), 1);
+    // float4 diffusedPoint = sumOfTrail/9*diffusionRate*deltaTime;
+    // diffusedPoint += max(DrawTex[id.xy], sumOfTrail/9*diffusionRate*deltaTime);
+    // diffusedPoint += max(DrawTex[id.xy], sumOfTrail/9);
     DiffusedTex[id.xy] = diffusedPoint - decayRate*deltaTime;
 }

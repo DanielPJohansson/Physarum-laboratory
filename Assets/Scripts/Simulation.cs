@@ -10,6 +10,7 @@ public class Simulation : MonoBehaviour
     [SerializeField] Color backgroundColor;
     [SerializeField] uint numberOfCells = 10;
     [SerializeField] float velocity = 10f;
+    [SerializeField] float velocityVariation = 10f;
     [SerializeField] float turnSpeed = 10f;
     [SerializeField] float senseAngle = 1f;
     [SerializeField] float senseDistance = 10f;
@@ -75,7 +76,7 @@ public class Simulation : MonoBehaviour
             {
                 position = new Vector2(texResolution.x / 2, texResolution.y / 2),
                 angle = Random.Range(0f, 2 * Mathf.PI),
-                velocity = velocity,
+                velocity = Random.Range(velocity * (1 - velocityVariation), velocity * (1 + velocityVariation)),
             };
             cells[i] = cell;
         }
