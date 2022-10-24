@@ -40,17 +40,9 @@ public class Simulation : MonoBehaviour
 
     void Start()
     {
-        trailTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
-        trailTexture.enableRandomWrite = true;
-        trailTexture.Create();
-        diffusionTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
-        diffusionTexture.enableRandomWrite = true;
-        diffusionTexture.Create();
-        drawTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
-        drawTexture.enableRandomWrite = true;
-        drawTexture.Create();
-        rend = GetComponent<Renderer>();
-        rend.enabled = true;
+        CreateTextures();
+
+        EnableRenderer();
 
         InitData();
 
@@ -59,13 +51,39 @@ public class Simulation : MonoBehaviour
 
     void FixedUpdate()
     {
+        UpdateParameters();
         DispatchKernals();
+    }
+
+    void OnDestroy()
+    {
+        computeBuffer.Release();
+    }
+
+    private void CreateTextures()
+    {
+        trailTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
+        trailTexture.enableRandomWrite = true;
+        trailTexture.Create();
+
+        diffusionTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
+        diffusionTexture.enableRandomWrite = true;
+        diffusionTexture.Create();
+
+        drawTexture = new RenderTexture(texResolution.x, texResolution.y, 0);
+        drawTexture.enableRandomWrite = true;
+        drawTexture.Create();
+    }
+
+    private void EnableRenderer()
+    {
+        rend = GetComponent<Renderer>();
+        rend.enabled = true;
     }
 
     private void InitData()
     {
         uint numberOfCellsInstatiated = (numberOfCells / 64) * 64;
-        Debug.Log(numberOfCellsInstatiated);
         cells = new Cell[numberOfCellsInstatiated];
 
         for (int i = 0; i < numberOfCellsInstatiated; i++)
@@ -88,50 +106,56 @@ public class Simulation : MonoBehaviour
         diffuseHandle = shader.FindKernel("Diffuse");
         shader.GetKernelThreadGroupSizes(cellHandle, out threadGroupSizeX, out _, out _);
         threads = Mathf.CeilToInt(((float)numberOfCells / (float)threadGroupSizeX));
-        Debug.Log(threads);
 
-        Debug.Log(threadGroupSizeX);
-
-        shader.SetVector("backgroundColor", backgroundColor);
-        shader.SetVector("cellColor", cellColor);
-        shader.SetInt("texResolutionX", texResolution.x);
-        shader.SetInt("texResolutionY", texResolution.y);
-        shader.SetFloat("deltaTime", Time.fixedDeltaTime);
-        shader.SetVector("decayRate", decayRate);
-        shader.SetVector("diffusionRate", diffusionRate);
-        shader.SetFloat("senseAngle", senseAngle);
-        shader.SetFloat("turnSpeed", turnSpeed);
-        shader.SetFloat("senseDistance", senseDistance);
-
-        shader.SetTexture(cellHandle, "TrailTex", trailTexture);
-        // shader.SetTexture(diffuseHandle, "TrailTex", trailTexture);
-        // shader.SetTexture(cellHandle, "DrawTex", drawTexture);
-        shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
-        shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
+        SetParameters();
+        SetTextures();
 
         int stride = (2 + 1 + 1) * sizeof(float);
         computeBuffer = new ComputeBuffer(cells.Length, stride);
         computeBuffer.SetData(cells);
         shader.SetBuffer(cellHandle, "cellsBuffer", computeBuffer);
-        // Graphics.Blit(trailTexture, drawTexture);
-        // Graphics.Blit(trailTexture, diffusionTexture);
 
+    }
+
+    private void SetTextures()
+    {
+        shader.SetTexture(cellHandle, "TrailTex", trailTexture);
+        shader.SetTexture(cellHandle, "DrawTex", drawTexture);
+        shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
+        shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
         rend.material.SetTexture("_MainTex", drawTexture);
     }
 
-    private void DispatchKernals()
+    private void SetParameters()
     {
+        shader.SetVector("backgroundColor", backgroundColor);
+        shader.SetVector("cellColor", cellColor);
 
+        shader.SetInt("texResolutionX", texResolution.x);
+        shader.SetInt("texResolutionY", texResolution.y);
+
+        shader.SetVector("decayRate", decayRate);
+        shader.SetVector("diffusionRate", diffusionRate);
+        shader.SetFloat("senseAngle", senseAngle);
+        shader.SetFloat("turnSpeed", turnSpeed);
+        shader.SetFloat("senseDistance", senseDistance);
+    }
+
+    private void UpdateParameters()
+    {
         shader.SetFloat("time", Time.time);
         shader.SetFloat("deltaTime", Time.fixedDeltaTime);
 
-        shader.Dispatch(cellHandle, threads, 1, 1);
-        Graphics.Blit(trailTexture, drawTexture);
+
+        shader.SetBool("sensing", !Input.GetKey(KeyCode.Return));
     }
 
 
-    void LateUpdate()
+    private void DispatchKernals()
     {
+        shader.Dispatch(cellHandle, threads, 1, 1);
+        Graphics.Blit(trailTexture, drawTexture);
+
         shader.Dispatch(diffuseHandle, texResolution.x / 8, texResolution.y / 8, 1);
         Graphics.Blit(diffusionTexture, trailTexture);
     }

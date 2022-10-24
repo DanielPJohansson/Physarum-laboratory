@@ -10,20 +10,23 @@ struct cell
 };
 
 RWStructuredBuffer<cell> cellsBuffer;
-shared RWTexture2D<float4> TrailTex;
+RWTexture2D<float4> TrailTex;
 RWTexture2D<float4> DiffusedTex;
-Texture2D<float4> DrawTex;
+shared Texture2D<float4> DrawTex;
+
 float4 backgroundColor;
 float4 cellColor;
 float deltaTime;
 float time;
 int texResolutionX;
 int texResolutionY;
+
 float4 decayRate;
 float4 diffusionRate;
 float senseDistance;
 float senseAngle;
 float turnSpeed;
+bool sensing;
 
 
 float random (float2 pt, float seed) {
@@ -31,29 +34,6 @@ float random (float2 pt, float seed) {
     const float b = 78.233;
     const float c = 43758.543123;
     return frac(sin(dot(pt, float2(a, b)) + seed) * c );
-}
-
-float2 rand_2_0004(in float2 uv)
-{
-    float noiseX = (frac(sin(dot(uv, float2(12.9898,78.233)      )) * 43758.5453));
-    float noiseY = (frac(sin(dot(uv, float2(12.9898,78.233) * 2.0)) * 43758.5453));
-    return float2(noiseX, noiseY) * 0.004;
-}
-
-uint hash(uint state)
-{
-    state ^= 2747636419u;
-    state *= 2654435769u;
-    state ^= state >> 16;
-    state *= 2654435769u;
-    state ^= state >> 16;
-    state *= 2654435769u;
-    return state;
-}
-
-float scaleToRange01(uint state)
-{
-    return state / 4294967295.0;
 }
 
 float senseArea(float2 pos, float angle, float senseAngle) {
@@ -64,13 +44,11 @@ float senseArea(float2 pos, float angle, float senseAngle) {
 
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++){
-            // Yields interesting grid pattern
             // int sensePosX = (pos.x + edgeSenseDir.x*senseDistance)*i; 
             // int sensePosY = (pos.y + edgeSenseDir.y*senseDistance)*j;
-            int sensePosX = centerPos.x + i;
-            int sensePosY = centerPos.y + j;
-            sensed += TrailTex[uint2(sensePosX,sensePosY)].r*1 + TrailTex[uint2(sensePosX,sensePosY)].g*0.5 + TrailTex[uint2(sensePosX,sensePosY)].b*0.1;
-            // sensed += TrailTex[uint2(sensePosX,sensePosY)];
+            int sensePosX = max(0, min(centerPos.x + i, texResolutionX));
+            int sensePosY = max(0, min(centerPos.y + j, texResolutionY));
+            sensed += DrawTex[uint2(sensePosX,sensePosY)].r*1 + DrawTex[uint2(sensePosX,sensePosY)].g*0.5 + DrawTex[uint2(sensePosX,sensePosY)].b*0.1;
         }
     }
     
@@ -83,31 +61,13 @@ void Cells (uint3 id : SV_DispatchThreadID)
 {
     float newAngle = cellsBuffer[id.x].angle;
     float2 dir = float2(cos(newAngle), sin(newAngle));
+    float2 oldPos = cellsBuffer[id.x].position;
     float2 pos = (cellsBuffer[id.x].position + dir*cellsBuffer[id.x].velocity*deltaTime);
 
-    if(pos.x < 1.0)
+    if(pos.x < 1.0 || pos.y < 1.0 || pos.x > texResolutionX - 1.0 || pos.y > texResolutionY - 1.0)
     {
-        pos.x = 1;
-        // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 2.81;
-    }
-    if(pos.y < 1.0 )
-    {
-        pos.y = 1;
-        // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 2.81;
-    }
-    if(pos.x > texResolutionX - 1.0)
-    {
-        pos.x = texResolutionX - 1.0;
-        // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 2.81;
-    }
-    if(pos.y > texResolutionY - 1.0)
-    {
-        pos.y = texResolutionY - 1.0;
-        // newAngle = random(pos, time)*2*3.14;
-        newAngle -= 2.81;
+        pos = oldPos;
+        newAngle = random(pos, time)*2*3.14;
     }
 
     float senseRight = senseArea(pos, newAngle, -senseAngle);
@@ -128,11 +88,11 @@ void Cells (uint3 id : SV_DispatchThreadID)
     }
     else if(senseRight > senseForward && senseRight > senseLeft)
     {
-        newAngle -= deltaTime*turnSpeed;
+        newAngle -= deltaTime*turnSpeed*sensing;
     }
     else if(senseLeft > senseForward && senseLeft > senseRight)
     {
-        newAngle += deltaTime*turnSpeed;
+        newAngle += deltaTime*turnSpeed*sensing;
     }
     
 
@@ -150,17 +110,13 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
     {
         for(int j = -1; j <= 1; j++)
         {   
-            // if((int)id.x + i > 1 && (int)id.x + i < texResolutionX - 1 && (int)id.y + j > 1 && (int)id.y + j < texResolutionY - 1)
-            sumOfTrail += DrawTex[uint2(id.x+i, id.y+j)];
-            // }
+            uint xPos = max(0, min(id.x, texResolutionX));
+            uint yPos = max(0, min(id.y, texResolutionY));
+            sumOfTrail += DrawTex[uint2(xPos, yPos)];
         }
     }
 
-    // float4 newValue = float4(max(diffusedPoint.r, DrawTex[id.xy].r), max(diffusedPoint.g, DrawTex[id.xy].g), max(diffusedPoint.b, DrawTex[id.xy].b), 1);
     float4 diffusedPoint = float4(0,0,0,0);
     diffusedPoint += float4(max(sumOfTrail.r/9*diffusionRate.r*deltaTime, DrawTex[id.xy].r), max(sumOfTrail.g/9*diffusionRate.g*deltaTime, DrawTex[id.xy].g), max(sumOfTrail.b/9*diffusionRate.b*deltaTime, DrawTex[id.xy].b), 1);
-    // float4 diffusedPoint = sumOfTrail/9*diffusionRate*deltaTime;
-    // diffusedPoint += max(DrawTex[id.xy], sumOfTrail/9*diffusionRate*deltaTime);
-    // diffusedPoint += max(DrawTex[id.xy], sumOfTrail/9);
     DiffusedTex[id.xy] = diffusedPoint - decayRate*deltaTime;
 }
