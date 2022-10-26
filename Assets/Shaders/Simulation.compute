@@ -13,6 +13,7 @@ RWStructuredBuffer<cell> cellsBuffer;
 RWTexture2D<float4> TrailTex;
 RWTexture2D<float4> DiffusedTex;
 shared Texture2D<float4> DrawTex;
+Texture2D<float4> MaskTex;
 
 float4 backgroundColor;
 float4 cellColor;
@@ -48,7 +49,9 @@ float senseArea(float2 pos, float angle, float senseAngle) {
             // int sensePosY = (pos.y + edgeSenseDir.y*senseDistance)*j;
             int sensePosX = max(0, min(centerPos.x + i, texResolutionX));
             int sensePosY = max(0, min(centerPos.y + j, texResolutionY));
-            sensed += DrawTex[uint2(sensePosX,sensePosY)].r*1 + DrawTex[uint2(sensePosX,sensePosY)].g*0.5 + DrawTex[uint2(sensePosX,sensePosY)].b*0.1;
+            sensed += DrawTex[uint2(sensePosX,sensePosY)].r*1*MaskTex[uint2(sensePosX,sensePosY)].random
+             + DrawTex[uint2(sensePosX,sensePosY)].g*0.5*MaskTex[uint2(sensePosX,sensePosY)].g
+              + DrawTex[uint2(sensePosX,sensePosY)].b*0.1*MaskTex[uint2(sensePosX,sensePosY)].b;
         }
     }
     

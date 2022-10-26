@@ -16,6 +16,7 @@ public class Simulation : MonoBehaviour
     [SerializeField] float senseDistance = 10f;
     [SerializeField] Vector4 decayRate = new Vector4(1f, 0.5f, 0.2f, 0f);
     [SerializeField] Vector4 diffusionRate = new Vector4(0.2f, 0.5f, 2f, 0f);
+    [SerializeField] Texture2D maskTexture;
 
     Renderer rend;
     RenderTexture trailTexture;
@@ -121,6 +122,7 @@ public class Simulation : MonoBehaviour
     {
         shader.SetTexture(cellHandle, "TrailTex", trailTexture);
         shader.SetTexture(cellHandle, "DrawTex", drawTexture);
+        shader.SetTexture(cellHandle, "MaskTex", maskTexture);
         shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
         shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
         rend.material.SetTexture("_MainTex", drawTexture);
