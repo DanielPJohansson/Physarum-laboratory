@@ -45,16 +45,11 @@ float senseArea(float2 pos, float angle, float senseAngle) {
 
     for (int i = -1; i <= 1; i++) {
         for (int j = -1; j <= 1; j++){
-            // int sensePosX = (pos.x + edgeSenseDir.x*senseDistance)*i; 
-            // int sensePosY = (pos.y + edgeSenseDir.y*senseDistance)*j;
             int sensePosX = max(0, min(centerPos.x + i, texResolutionX));
             int sensePosY = max(0, min(centerPos.y + j, texResolutionY));
             sensed += DrawTex[uint2(sensePosX,sensePosY)].r
              + DrawTex[uint2(sensePosX,sensePosY)].g
               + DrawTex[uint2(sensePosX,sensePosY)].b;
-            // sensed += DrawTex[uint2(sensePosX,sensePosY)].r*1*MaskTex[uint2(sensePosX,sensePosY)].r
-            //  + DrawTex[uint2(sensePosX,sensePosY)].g*0.5*MaskTex[uint2(sensePosX,sensePosY)].g
-            //   + DrawTex[uint2(sensePosX,sensePosY)].b*0.1*MaskTex[uint2(sensePosX,sensePosY)].b;
         }
     }
     
