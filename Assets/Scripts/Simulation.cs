@@ -29,13 +29,10 @@ public class Simulation : MonoBehaviour
 
     Cell[] cells;
 
-    void Awake()
-    {
-        GetReferences();
-    }
 
     void Start()
     {
+        GetReferences();
         CreateTextures();
         EnableRenderer();
         GetKernels();

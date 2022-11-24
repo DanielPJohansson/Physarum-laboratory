@@ -11,7 +11,7 @@ public class InputManager : MonoBehaviour
     Simulation simulation;
 
 
-    void Awake()
+    void Start()
     {
         GetReferences();
     }
@@ -40,11 +40,11 @@ public class InputManager : MonoBehaviour
 
     public void StartSimulation()
     {
-        SetSimulationSettings();
+        SetupSimulation();
         simulation.Run();
     }
 
-    private void SetSimulationSettings()
+    private void SetupSimulation()
     {
         SetNumberOfCells();
     }
