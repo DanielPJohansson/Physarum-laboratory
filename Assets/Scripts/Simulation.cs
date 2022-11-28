@@ -10,14 +10,15 @@ public class Simulation : MonoBehaviour
     [SerializeField] public uint numberOfCells = 10;
     [SerializeField] Vector4 decayRate = new Vector4(1f, 0.5f, 0.2f, 0f);
     [SerializeField] Vector4 diffusionRate = new Vector4(0.2f, 0.5f, 2f, 0f);
-    [SerializeField] Texture2D maskTexture;
-
+    [SerializeField] Texture2D backgroundTexture;
+    [SerializeField] Texture2D blackTexture;
     SpeciesSettings speciesSettings;
 
     Renderer rend;
     RenderTexture trailTexture;
     RenderTexture diffusionTexture;
     RenderTexture drawTexture;
+    RenderTexture maskTexture;
     ComputeBuffer computeBuffer;
     int cellHandle;
     int diffuseHandle;
@@ -28,7 +29,6 @@ public class Simulation : MonoBehaviour
     public bool running = false;
 
     Cell[] cells;
-
 
     void Start()
     {
@@ -81,6 +81,7 @@ public class Simulation : MonoBehaviour
         trailTexture = ShaderHelper.CreateTexture(texResolution);
         diffusionTexture = ShaderHelper.CreateTexture(texResolution);
         drawTexture = ShaderHelper.CreateTexture(texResolution);
+        maskTexture = ShaderHelper.CreateTexture(texResolution);
     }
 
     private void EnableRenderer()
@@ -117,12 +118,12 @@ public class Simulation : MonoBehaviour
         threads = Mathf.CeilToInt(((float)numberOfCells / (float)threadGroupSizeX));
     }
 
-
     private void SetTextures()
     {
+        Graphics.Blit(backgroundTexture, maskTexture);
+        shader.SetTexture(cellHandle, "MaskTex", maskTexture);
         shader.SetTexture(cellHandle, "TrailTex", trailTexture);
         shader.SetTexture(cellHandle, "DrawTex", drawTexture);
-        shader.SetTexture(cellHandle, "MaskTex", maskTexture);
         shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
         shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
         rend.material.SetTexture("_MainTex", drawTexture);
@@ -135,6 +136,9 @@ public class Simulation : MonoBehaviour
 
         shader.SetInt("texResolutionX", texResolution.x);
         shader.SetInt("texResolutionY", texResolution.y);
+
+        Debug.Log(speciesSettings.senseAngle);
+        Debug.Log(speciesSettings.senseDistance);
 
         shader.SetVector("decayRate", decayRate);
         shader.SetVector("diffusionRate", diffusionRate);
