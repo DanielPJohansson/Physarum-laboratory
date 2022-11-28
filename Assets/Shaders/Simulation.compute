@@ -47,9 +47,8 @@ float senseArea(float2 pos, float angle, float senseAngle) {
         for (int j = -1; j <= 1; j++){
             int sensePosX = max(0, min(centerPos.x + i, texResolutionX));
             int sensePosY = max(0, min(centerPos.y + j, texResolutionY));
-            sensed += DrawTex[uint2(sensePosX,sensePosY)].r
-             + DrawTex[uint2(sensePosX,sensePosY)].g
-              + DrawTex[uint2(sensePosX,sensePosY)].b;
+            sensed += DrawTex[uint2(sensePosX,sensePosY)]
+              + MaskTex[uint2(sensePosX,sensePosY)] * 4;
         }
     }
     
@@ -77,7 +76,8 @@ void Cells (uint3 id : SV_DispatchThreadID)
     float2 centerPos = float2(texResolutionX/2, texResolutionY/2);
     float2 relPos = pos - centerPos;
 
-    if(length(relPos) > texResolutionX/2 || MaskTex[pos].r < 0.5)
+    // if(length(relPos) > texResolutionX/2 || MaskTex[pos].r < 0.5)
+    if(length(relPos) > texResolutionX/2)
     {
         pos = oldPos;
         newAngle = random(pos, time)*2*3.14;
@@ -86,19 +86,24 @@ void Cells (uint3 id : SV_DispatchThreadID)
     float senseRight = senseArea(pos, newAngle, -senseAngle);
     float senseForward = senseArea(pos, newAngle, 0);
     float senseLeft = senseArea(pos, newAngle, senseAngle);
+    float senseBehind = senseArea(pos, newAngle, 3.14);
 
-    if(senseForward > senseRight && senseForward > senseLeft)
+    if(senseBehind > 10 && senseForward < 10 && senseLeft < 10 && senseRight < 10)
     {
-        newAngle += 0.0;
-        // if(senseForward < 0.5)
-        // {
-        //     newAngle += (random(pos, time)-0.5)*4*deltaTime*turnSpeed;
-        // }   
+        newAngle += (random(pos, time)-0.5)*4*deltaTime*turnSpeed;
     }
-    else if(senseForward < senseRight && senseForward < senseLeft)
-    {
-        // newAngle += (random(pos, time)-0.5)*2*deltaTime*turnSpeed;
-    }
+    // else if(senseForward > senseRight && senseForward > senseLeft)
+    // {
+    //     newAngle += 0.0;
+    //     // if(senseForward < 0.5)
+    //     // {
+    //     //     newAngle += (random(pos, time)-0.5)*4*deltaTime*turnSpeed;
+    //     // }   
+    // }
+    // else if(senseForward < senseRight && senseForward < senseLeft)
+    // {
+    //     // newAngle += (random(pos, time)-0.5)*2*deltaTime*turnSpeed;
+    // }
     else if(senseRight > senseForward && senseRight > senseLeft)
     {
         newAngle -= deltaTime*turnSpeed*sensing;
