@@ -43,7 +43,7 @@ public static class DataManager
         return positions;
     }
 
-    public static List<Vector2> GenerateRandomPointsInTexture(int numberOfCells, int numberOfPoints, Vector2Int texResolution)
+    public static List<Vector2> GenerateRandomPointsInTexture(int numberOfPoints, Vector2Int texResolution)
     {
         List<Vector2> positions = new();
 

@@ -21,6 +21,8 @@ float deltaTime;
 float time;
 uint texResolutionX;
 uint texResolutionY;
+uint centerPosX;
+uint centerPosY;
 
 float4 decayRate;
 float4 diffusionRate;
@@ -28,6 +30,7 @@ float senseDistance;
 float senseAngle;
 float turnSpeed;
 bool sensing;
+bool isCircular;
 
 
 float random (float2 pt, float seed) {
@@ -39,11 +42,13 @@ float random (float2 pt, float seed) {
 
 float senseArea(float2 pos, float angle, float senseAngle) {
     float2 edgeSenseDir = float2(cos(angle + senseAngle), sin(angle + senseAngle));
-    
+
     float sensed = 0;
     float2 centerPos = float2(pos.x + edgeSenseDir.x*senseDistance, pos.y + edgeSenseDir.y*senseDistance);
 
+    [unroll(3)]
     for (int i = -1; i <= 1; i++) {
+        [unroll(3)]
         for (int j = -1; j <= 1; j++){
             uint sensePosX = max(0, min(centerPos.x + i, texResolutionX));
             uint sensePosY = max(0, min(centerPos.y + j, texResolutionY));
@@ -51,7 +56,7 @@ float senseArea(float2 pos, float angle, float senseAngle) {
               + MaskTex[uint2(sensePosX,sensePosY)] * 4;
         }
     }
-    
+
     return sensed;
 }
 
@@ -64,19 +69,16 @@ void Cells (uint3 id : SV_DispatchThreadID)
     float2 oldPos = cellsBuffer[id.x].position;
     float2 pos = (cellsBuffer[id.x].position + dir*cellsBuffer[id.x].velocity*deltaTime);
 
-    //Square
-    // if(pos.x < 1.0 || pos.y < 1.0 || pos.x > texResolutionX - 1.0 || pos.y > texResolutionY - 1.0 || MaskTex[pos].r < 0.5)
-    // {
-    //     pos = oldPos;
-    //     newAngle = random(pos, time)*2*3.14;
-    // }
 
+    float2 relPos = pos - uint2(centerPosX, centerPosY);
 
-    //Circular
-    float2 centerPos = float2(texResolutionX/2, texResolutionY/2);
-    float2 relPos = pos - centerPos;
+    if((uint)length(relPos)*isCircular > texResolutionX/2)
+    {
+        pos = oldPos;
+        newAngle = random(pos, time)*2*3.14;
+    }
 
-    if((uint)length(relPos) > texResolutionX/2)
+    if(pos.x < 1.0 || pos.y < 1.0 || pos.x > texResolutionX - 1.0 || pos.y > texResolutionY - 1.0)
     {
         pos = oldPos;
         newAngle = random(pos, time)*2*3.14;
@@ -86,6 +88,7 @@ void Cells (uint3 id : SV_DispatchThreadID)
     float senseForward = senseArea(pos, newAngle, 0);
     float senseLeft = senseArea(pos, newAngle, senseAngle);
     float senseBehind = senseArea(pos, newAngle, 3.14);
+    // float senseBehind = 0;
 
     if(senseBehind > 10 && senseForward < 10 && senseLeft < 10 && senseRight < 10)
     {
@@ -103,7 +106,7 @@ void Cells (uint3 id : SV_DispatchThreadID)
     {
         newAngle += (random(pos, time)-0.5)*2*deltaTime*turnSpeed;
     }
-    
+
 
     TrailTex[pos] = cellColor;
     cellsBuffer[id.x].position = pos;
@@ -118,7 +121,7 @@ void Diffuse (uint3 id : SV_DispatchThreadID)
     for(int i = -1; i <= 1; i++)
     {
         for(int j = -1; j <= 1; j++)
-        {   
+        {
             uint xPos = max(0, min(id.x+i, texResolutionX));
             uint yPos = max(0, min(id.y+j, texResolutionY));
             sumOfTrail += DrawTex[uint2(xPos, yPos)];

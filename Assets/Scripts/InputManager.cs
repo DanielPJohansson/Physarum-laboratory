@@ -6,15 +6,7 @@ using TMPro;
 
 public class InputManager : MonoBehaviour
 {
-    [SerializeField] TMP_InputField cellNumberInput;
-    [SerializeField] TMP_InputField velocityInput;
-    [SerializeField] TMP_InputField turnRateInput;
-    [SerializeField] TMP_InputField sensingDistanceInput;
-    [SerializeField] TMP_InputField sensingAngleInput;
-
-    Simulation simulation;
-    SpeciesSettings speciesSettings;
-
+    SimulationManager simulationManager;
 
     void Start()
     {
@@ -23,8 +15,7 @@ public class InputManager : MonoBehaviour
 
     private void GetReferences()
     {
-        simulation = FindObjectOfType<Simulation>();
-        speciesSettings = simulation.GetComponent<SpeciesSettings>();
+        simulationManager = GetComponent<SimulationManager>();
     }
 
     void Update()
@@ -46,78 +37,11 @@ public class InputManager : MonoBehaviour
 
     public void StartSimulation()
     {
-        SetupSimulation();
-        simulation.Run();
-    }
-
-    private void SetupSimulation()
-    {
-        SetNumberOfCells();
-        SetTurnRate();
-        SetVelocity();
-        SetSensingAngle();
-        SetSensingDistance();
+        simulationManager.StartSimulation();
     }
 
     public void ResetSimulation()
     {
-        simulation.Reset();
+        simulationManager.ResetSimulation();
     }
-
-    private void SetNumberOfCells()
-    {
-        string input = cellNumberInput.text;
-        uint number;
-
-        if (UInt32.TryParse(input, out number))
-        {
-            simulation.numberOfCells = number;
-        }
-    }
-    private void SetTurnRate()
-    {
-        string input = turnRateInput.text;
-        float number;
-
-        if (float.TryParse(input, out number))
-        {
-            speciesSettings.turnSpeed = number;
-        }
-    }
-
-    private void SetVelocity()
-    {
-        string input = velocityInput.text;
-        uint number;
-
-        if (UInt32.TryParse(input, out number))
-        {
-            speciesSettings.velocity = number;
-        }
-    }
-
-    private void SetSensingDistance()
-    {
-        string input = sensingDistanceInput.text;
-        uint number;
-
-        if (UInt32.TryParse(input, out number))
-        {
-            speciesSettings.senseDistance = number;
-        }
-    }
-
-    private void SetSensingAngle()
-    {
-        string input = sensingAngleInput.text;
-        float number;
-
-        if (float.TryParse(input, out number))
-        {
-            float angle = number / (2 * Mathf.PI);
-            speciesSettings.senseAngle = angle;
-        }
-    }
-
-
 }

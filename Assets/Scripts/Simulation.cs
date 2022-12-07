@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Simulation : MonoBehaviour
 {
-    [SerializeField] ComputeShader shader;
+    [SerializeField] ComputeShader simulationShader;
     [SerializeField] Vector2Int texResolution = new Vector2Int(512, 512);
     [SerializeField] Color backgroundColor;
     [SerializeField] public uint numberOfCells = 10;
@@ -27,6 +27,7 @@ public class Simulation : MonoBehaviour
     int threads;
 
     public bool running = false;
+    public bool useCircularShape = false;
 
     Cell[] cells;
 
@@ -91,16 +92,25 @@ public class Simulation : MonoBehaviour
     }
     private void GetKernels()
     {
-        cellHandle = shader.FindKernel("Cells");
-        diffuseHandle = shader.FindKernel("Diffuse");
-        shader.GetKernelThreadGroupSizes(cellHandle, out threadGroupSizeX, out _, out _);
+        cellHandle = simulationShader.FindKernel("Cells");
+        diffuseHandle = simulationShader.FindKernel("Diffuse");
+        simulationShader.GetKernelThreadGroupSizes(cellHandle, out threadGroupSizeX, out _, out _);
     }
 
     private void InitData()
     {
         uint numberOfCellsToInstatiate = (numberOfCells / threadGroupSizeX) * threadGroupSizeX;
+        List<Vector2> positions = new();
 
-        List<Vector2> positions = DataManager.GenerateRandomPointsInCircle(30, texResolution);
+        if (useCircularShape)
+        {
+            positions = DataManager.GenerateRandomPointsInCircle(30, texResolution);
+        }
+        else
+        {
+            positions = DataManager.GenerateRandomPointsInTexture(30, texResolution);
+        }
+
         cells = DataManager.GenerateCellsWithStartPositions(numberOfCellsToInstatiate, speciesSettings, positions);
     }
 
@@ -121,52 +131,57 @@ public class Simulation : MonoBehaviour
     private void SetTextures()
     {
         Graphics.Blit(backgroundTexture, maskTexture);
-        shader.SetTexture(cellHandle, "MaskTex", maskTexture);
-        shader.SetTexture(cellHandle, "TrailTex", trailTexture);
-        shader.SetTexture(cellHandle, "DrawTex", drawTexture);
-        shader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
-        shader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
+        simulationShader.SetTexture(cellHandle, "MaskTex", maskTexture);
+        simulationShader.SetTexture(cellHandle, "TrailTex", trailTexture);
+        simulationShader.SetTexture(cellHandle, "DrawTex", drawTexture);
+        simulationShader.SetTexture(diffuseHandle, "DrawTex", drawTexture);
+        simulationShader.SetTexture(diffuseHandle, "DiffusedTex", diffusionTexture);
         rend.material.SetTexture("_MainTex", drawTexture);
     }
 
     private void SetParameters()
     {
-        shader.SetVector("backgroundColor", backgroundColor);
-        shader.SetVector("cellColor", speciesSettings.cellColor);
+        simulationShader.SetVector("backgroundColor", backgroundColor);
+        simulationShader.SetVector("cellColor", speciesSettings.cellColor);
 
-        shader.SetInt("texResolutionX", texResolution.x);
-        shader.SetInt("texResolutionY", texResolution.y);
+        simulationShader.SetInt("texResolutionX", texResolution.x);
+        simulationShader.SetInt("texResolutionY", texResolution.y);
+
+        simulationShader.SetInt("centerPosX", texResolution.x / 2);
+        simulationShader.SetInt("centerPosY", texResolution.y / 2);
+
 
         Debug.Log(speciesSettings.senseAngle);
         Debug.Log(speciesSettings.senseDistance);
 
-        shader.SetVector("decayRate", decayRate);
-        shader.SetVector("diffusionRate", diffusionRate);
-        shader.SetFloat("senseAngle", speciesSettings.senseAngle);
-        shader.SetFloat("turnSpeed", speciesSettings.turnSpeed);
-        shader.SetFloat("senseDistance", speciesSettings.senseDistance);
+        simulationShader.SetVector("decayRate", decayRate);
+        simulationShader.SetVector("diffusionRate", diffusionRate);
+        simulationShader.SetFloat("senseAngle", speciesSettings.senseAngle);
+        simulationShader.SetFloat("turnSpeed", speciesSettings.turnSpeed);
+        simulationShader.SetFloat("senseDistance", speciesSettings.senseDistance);
+        simulationShader.SetBool("isCircular", useCircularShape);
     }
     private void SetBuffer()
     {
         int stride = (2 + 1 + 1) * sizeof(float);
         computeBuffer = new ComputeBuffer(cells.Length, stride);
         computeBuffer.SetData(cells);
-        shader.SetBuffer(cellHandle, "cellsBuffer", computeBuffer);
+        simulationShader.SetBuffer(cellHandle, "cellsBuffer", computeBuffer);
     }
 
     private void UpdateParameters()
     {
-        shader.SetFloat("time", Time.time);
-        shader.SetFloat("deltaTime", Time.fixedDeltaTime);
-        shader.SetBool("sensing", !Input.GetKey(KeyCode.Return));
+        simulationShader.SetFloat("time", Time.time);
+        simulationShader.SetFloat("deltaTime", Time.fixedDeltaTime);
+        simulationShader.SetBool("sensing", !Input.GetKey(KeyCode.Return));
     }
 
     private void DispatchKernals()
     {
-        shader.Dispatch(cellHandle, threads, 1, 1);
+        simulationShader.Dispatch(cellHandle, threads, 1, 1);
         Graphics.Blit(trailTexture, drawTexture);
 
-        shader.Dispatch(diffuseHandle, texResolution.x / 8, texResolution.y / 8, 1);
+        simulationShader.Dispatch(diffuseHandle, texResolution.x / 8, texResolution.y / 8, 1);
         Graphics.Blit(diffusionTexture, trailTexture);
     }
 }
